@@ -1,4 +1,5 @@
 #[non_exhaustive]
+#[derive(Debug)]
 pub enum Fault {
 	MemoryError,
 	ExplicitTrap,
@@ -636,5 +637,61 @@ impl<M: Memory> MVM<M> {
 
 	fn get_carry(&mut self) -> bool {
 		self.flags & 0x04 != 0
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	impl Memory for Vec<u8> {
+		fn read(&mut self, address: u64) -> Option<u8> {
+			let address: usize = address.try_into().ok()?;
+			self.get(address).map(|&x| x)
+		}
+
+		fn write(&mut self, address: u64, value: u8) -> Option<()> {
+			let address: usize = address.try_into().ok()?;
+			*self.get_mut(address)? = value;
+			Some(())
+		}
+	}
+
+	const ARBITRARY_INIT: u64 = 0x0123456789abcdef;
+
+	#[test]
+	fn test_addition_loop() {
+		// quick program to essentially check (0 .. 23).sum() == 253
+
+		let src = vec![
+			0x04, 0x01, 0x00, // addi r1 r0 0
+			0x04, 0x02, 0x00, // addi r2 r0 0
+
+			// loop_start:
+			0x14, 0x10, 0x17, // sub r0 r1 23
+			0xe2, 0x00, 0x23, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // jalz r0 loop_end
+
+			0x00, 0x22, 0x01, // add r2 r2 r1
+			0x04, 0x11, 0x01, // addi r1 r1 1
+			0xe0, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // jmp loop_start
+
+			// loop_end:
+			0x14, 0x20, 0xfc, // sub r0 r2 253
+			0xe0, 0x00, 0x31, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // jalz r0 success
+
+			0xff, // trap
+
+			// success:
+			0xfe, // halt
+		];
+
+		let mut mvm = MVM {
+			memory: src,
+			ip: 0,
+			registers: [ARBITRARY_INIT; 15],
+			flags: 0,
+		};
+
+		while !mvm.step().unwrap() {}
 	}
 }
