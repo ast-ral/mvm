@@ -67,11 +67,17 @@ impl Flaggable for u64 {
 
 trait LowHighMul {
 	fn low_high_mul(self, other: Self) -> (Self, Self) where Self: Sized;
+	fn signed_low_high_mul(self, other: Self) -> (Self, Self) where Self: Sized;
 }
 
 impl LowHighMul for u8 {
 	fn low_high_mul(self, other: Self) -> (Self, Self) {
 		let out = self as u16 * other as u16;
+		(out as u8, (out >> 8) as u8)
+	}
+
+	fn signed_low_high_mul(self, other: Self) -> (Self, Self) {
+		let out = self as i16 * other as i16;
 		(out as u8, (out >> 8) as u8)
 	}
 }
@@ -81,6 +87,11 @@ impl LowHighMul for u16 {
 		let out = self as u32 * other as u32;
 		(out as u16, (out >> 16) as u16)
 	}
+
+	fn signed_low_high_mul(self, other: Self) -> (Self, Self) {
+		let out = self as i32 * other as i32;
+		(out as u16, (out >> 16) as u16)
+	}
 }
 
 impl LowHighMul for u32 {
@@ -88,11 +99,21 @@ impl LowHighMul for u32 {
 		let out = self as u64 * other as u64;
 		(out as u32, (out >> 32) as u32)
 	}
+
+	fn signed_low_high_mul(self, other: Self) -> (Self, Self) {
+		let out = self as i64 * other as i64;
+		(out as u32, (out >> 32) as u32)
+	}
 }
 
 impl LowHighMul for u64 {
 	fn low_high_mul(self, other: Self) -> (Self, Self) {
 		let out = self as u128 * other as u128;
+		(out as u64, (out >> 64) as u64)
+	}
+
+	fn signed_low_high_mul(self, other: Self) -> (Self, Self) {
+		let out = self as i128 * other as i128;
 		(out as u64, (out >> 64) as u64)
 	}
 }
@@ -255,6 +276,14 @@ impl<M: Memory> MVM<M> {
 			}
 		}
 
+		macro_rules! imul_core {
+			($t:ty, $dst_a:ident, $dst_b:ident, $val_a:ident, $val_b:ident) => {
+				let (out_a, out_b) = $val_a.signed_low_high_mul($val_b);
+				self.set_register($dst_a, out_a as u64);
+				self.set_register($dst_b, out_b as u64);
+			}
+		}
+
 		macro_rules! not {
 			($t:ty) => {{
 				let (dst, src) = split(self.read_ip_u8()?);
@@ -308,6 +337,7 @@ impl<M: Memory> MVM<M> {
 		binary_subsidiaries!(xor_core, xor, xori);
 
 		ternary_subsidiaries!(mul_core, mul, muli);
+		ternary_subsidiaries!(imul_core, imul, imuli);
 
 		define_jumps!({true}, jal, jalr);
 		define_jumps!({self.get_zero()}, jalz, jalrz);
@@ -391,6 +421,15 @@ impl<M: Memory> MVM<M> {
 			0x3d => muli!(u16),
 			0x3e => muli!(u32),
 			0x3f => muli!(u64),
+
+			0x40 => imul!(u8),
+			0x41 => imul!(u16),
+			0x42 => imul!(u32),
+			0x43 => imul!(u64),
+			0x44 => imuli!(u8),
+			0x45 => imuli!(u16),
+			0x46 => imuli!(u32),
+			0x47 => imuli!(u64),
 
 			0xe0 => jal!(),
 			0xe1 => jalr!(),
