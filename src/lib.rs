@@ -100,7 +100,7 @@ impl LowHighMul for u64 {
 impl<M: Memory> MVM<M> {
 	pub fn step(&mut self) -> Result<bool, Fault> {
 		macro_rules! binary_subsidiaries {
-			($core:ident, $nimm:ident, $imm:ident) => {
+			($op_core:ident, $nimm:ident, $imm:ident) => {
 				macro_rules! $nimm {
 					($t:ty) => {{
 						let (dst, src_a) = split(self.read_ip_u8()?);
@@ -108,7 +108,7 @@ impl<M: Memory> MVM<M> {
 
 						let val_a = self.get_register(src_a) as $t;
 						let val_b = self.get_register(src_b) as $t;
-						$core!($t, dst, val_a, val_b);
+						$op_core!($t, dst, val_a, val_b);
 					}}
 				}
 
@@ -118,14 +118,14 @@ impl<M: Memory> MVM<M> {
 						let val_b = self.read_ip_and_process(<$t>::from_le_bytes)?;
 
 						let val_a = self.get_register(src) as $t;
-						$core!($t, dst, val_a, val_b);
+						$op_core!($t, dst, val_a, val_b);
 					}}
 				}
 			}
 		}
 
 		macro_rules! ternary_subsidiaries {
-			($core:ident, $nimm:ident, $imm:ident) => {
+			($op_core:ident, $nimm:ident, $imm:ident) => {
 				macro_rules! $nimm {
 					($t:ty) => {{
 						let (dst_a, dst_b) = split(self.read_ip_u8()?);
@@ -133,7 +133,7 @@ impl<M: Memory> MVM<M> {
 
 						let val_a = self.get_register(src_a) as $t;
 						let val_b = self.get_register(src_b) as $t;
-						$core!($t, dst_a, dst_b, val_a, val_b);
+						$op_core!($t, dst_a, dst_b, val_a, val_b);
 					}}
 				}
 
@@ -144,7 +144,7 @@ impl<M: Memory> MVM<M> {
 						let val_b = self.read_ip_and_process(<$t>::from_le_bytes)?;
 
 						let val_a = self.get_register(src) as $t;
-						$core!($t, dst_a, dst_b, val_a, val_b);
+						$op_core!($t, dst_a, dst_b, val_a, val_b);
 					}}
 				}
 			}
