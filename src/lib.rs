@@ -333,7 +333,7 @@ impl<M: Memory> MVM<M> {
 			($t:ty) => {{
 				let (dst, src) = split(self.read_ip_u8()?);
 				let data = self.get_register(src) as $t;
-				self.set_register(dst, !$t as u64);
+				self.set_register(dst, !data as u64);
 			}}
 		}
 
@@ -495,6 +495,11 @@ impl<M: Memory> MVM<M> {
 			0x55 => idivi!(u16),
 			0x56 => idivi!(u32),
 			0x57 => idivi!(u64),
+
+			0xd0 => not!(u8),
+			0xd1 => not!(u16),
+			0xd2 => not!(u32),
+			0xd3 => not!(u64),
 
 			0xe0 => jal!(),
 			0xe1 => jalr!(),
