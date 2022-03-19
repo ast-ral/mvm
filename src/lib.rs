@@ -1,7 +1,9 @@
+#[non_exhaustive]
 pub enum Fault {
 	MemoryError,
 	ExplicitTrap,
 	InvalidInstruction,
+	ExecutionError,
 }
 
 pub trait Memory {
@@ -116,6 +118,26 @@ impl LowHighMul for u64 {
 		let out = self as i128 * other as i128;
 		(out as u64, (out >> 64) as u64)
 	}
+}
+
+trait ToSignedType {
+	type Signed;
+}
+
+impl ToSignedType for u8 {
+	type Signed = i8;
+}
+
+impl ToSignedType for u16 {
+	type Signed = i8;
+}
+
+impl ToSignedType for u32 {
+	type Signed = i8;
+}
+
+impl ToSignedType for u64 {
+	type Signed = i8;
 }
 
 impl<M: Memory> MVM<M> {
@@ -284,6 +306,29 @@ impl<M: Memory> MVM<M> {
 			}
 		}
 
+		macro_rules! div_core {
+			($t:ty, $dst_a:ident, $dst_b:ident, $val_a:ident, $val_b:ident) => {
+				let out_a = $val_a.checked_div_euclid($val_b).ok_or(Fault::ExecutionError)?;
+				let out_b = $val_a.checked_rem_euclid($val_b).ok_or(Fault::ExecutionError)?;
+
+				self.set_register($dst_a, out_a as u64);
+				self.set_register($dst_b, out_b as u64);
+			}
+		}
+
+		macro_rules! idiv_core {
+			($t:ty, $dst_a:ident, $dst_b:ident, $val_a:ident, $val_b:ident) => {
+				let val_a = $val_a as <$t as ToSignedType>::Signed;
+				let val_b = $val_b as <$t as ToSignedType>::Signed;
+
+				let out_a = val_a.checked_div_euclid(val_b).ok_or(Fault::ExecutionError)?;
+				let out_b = val_a.checked_rem_euclid(val_b).ok_or(Fault::ExecutionError)?;
+
+				self.set_register($dst_a, out_a as u64);
+				self.set_register($dst_b, out_b as u64);
+			}
+		}
+
 		macro_rules! not {
 			($t:ty) => {{
 				let (dst, src) = split(self.read_ip_u8()?);
@@ -338,6 +383,8 @@ impl<M: Memory> MVM<M> {
 
 		ternary_subsidiaries!(mul_core, mul, muli);
 		ternary_subsidiaries!(imul_core, imul, imuli);
+		ternary_subsidiaries!(div_core, div, divi);
+		ternary_subsidiaries!(idiv_core, idiv, idivi);
 
 		define_jumps!({true}, jal, jalr);
 		define_jumps!({self.get_zero()}, jalz, jalrz);
@@ -430,6 +477,24 @@ impl<M: Memory> MVM<M> {
 			0x45 => imuli!(u16),
 			0x46 => imuli!(u32),
 			0x47 => imuli!(u64),
+
+			0x48 => div!(u8),
+			0x49 => div!(u16),
+			0x4a => div!(u32),
+			0x4b => div!(u64),
+			0x4c => divi!(u8),
+			0x4d => divi!(u16),
+			0x4e => divi!(u32),
+			0x4f => divi!(u64),
+
+			0x50 => idiv!(u8),
+			0x51 => idiv!(u16),
+			0x52 => idiv!(u32),
+			0x53 => idiv!(u64),
+			0x54 => idivi!(u8),
+			0x55 => idivi!(u16),
+			0x56 => idivi!(u32),
+			0x57 => idivi!(u64),
 
 			0xe0 => jal!(),
 			0xe1 => jalr!(),
