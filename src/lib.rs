@@ -334,7 +334,10 @@ impl<M: Memory> MVM<M> {
 			($t:ty) => {{
 				let (dst, src) = split(self.read_ip_u8()?);
 				let data = self.get_register(src) as $t;
-				self.set_register(dst, !data as u64);
+
+				let out = !data;
+				self.set_flags_for_val(out);
+				self.set_register(dst, out as u64);
 			}}
 		}
 
