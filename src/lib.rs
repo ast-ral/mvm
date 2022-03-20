@@ -394,6 +394,10 @@ impl<M: Memory> MVM<M> {
 		define_jumps!({!self.get_sign()}, jalns, jalrns);
 		define_jumps!({self.get_carry()}, jalc, jalrc);
 		define_jumps!({!self.get_carry()}, jalnc, jalrnc);
+		define_jumps!({self.get_zero() | self.get_sign()}, jalzs, jalrzs);
+		define_jumps!({!self.get_zero() & !self.get_sign()}, jalnzs, jalrnzs);
+		define_jumps!({self.get_zero() | self.get_carry()}, jalzc, jalrzc);
+		define_jumps!({!self.get_zero() & !self.get_carry()}, jalnzc, jalrnzc);
 
 		let opcode = self.read_ip_u8()?;
 
@@ -497,31 +501,43 @@ impl<M: Memory> MVM<M> {
 			0x56 => idivi!(u32),
 			0x57 => idivi!(u64),
 
-			0xd0 => not!(u8),
-			0xd1 => not!(u16),
-			0xd2 => not!(u32),
-			0xd3 => not!(u64),
+			0xc0 => not!(u8),
+			0xc1 => not!(u16),
+			0xc2 => not!(u32),
+			0xc3 => not!(u64),
 
-			0xe0 => jal!(),
-			0xe1 => jalr!(),
+			0xd0 => jal!(),
+			0xd1 => jalr!(),
 
-			0xe2 => jalz!(),
-			0xe3 => jalrz!(),
+			0xd2 => jalz!(),
+			0xd3 => jalrz!(),
 
-			0xe4 => jalnz!(),
-			0xe5 => jalrnz!(),
+			0xd4 => jalnz!(),
+			0xd5 => jalrnz!(),
 
-			0xe6 => jals!(),
-			0xe7 => jalrs!(),
+			0xd6 => jals!(),
+			0xd7 => jalrs!(),
 
-			0xe8 => jalns!(),
-			0xe9 => jalrns!(),
+			0xd8 => jalns!(),
+			0xd9 => jalrns!(),
 
-			0xea => jalc!(),
-			0xeb => jalrc!(),
+			0xda => jalc!(),
+			0xdb => jalrc!(),
 
-			0xec => jalnc!(),
-			0xed => jalrnc!(),
+			0xdc => jalnc!(),
+			0xdd => jalrnc!(),
+
+			0xde => jalzs!(),
+			0xdf => jalrzs!(),
+
+			0xe0 => jalnzs!(),
+			0xe1 => jalrnzs!(),
+
+			0xe2 => jalzc!(),
+			0xe3 => jalrzc!(),
+
+			0xe4 => jalnzc!(),
+			0xe5 => jalrnzc!(),
 
 			0xf0 => load!(u8),
 			0xf1 => load!(u16),
@@ -669,15 +685,15 @@ mod tests {
 
 			// loop_start:
 			0x14, 0x10, 0x17, // sub r0 r1 23
-			0xe2, 0x00, 0x23, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // jalz r0 loop_end
+			0xd2, 0x00, 0x23, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // jalz r0 loop_end
 
 			0x00, 0x22, 0x01, // add r2 r2 r1
 			0x04, 0x11, 0x01, // addi r1 r1 1
-			0xe0, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // jmp loop_start
+			0xd0, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // jmp loop_start
 
 			// loop_end:
 			0x14, 0x20, 0xfc, // sub r0 r2 253
-			0xe0, 0x00, 0x31, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // jalz r0 success
+			0xd0, 0x00, 0x31, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // jalz r0 success
 
 			0xff, // trap
 
