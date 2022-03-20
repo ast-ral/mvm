@@ -539,6 +539,8 @@ impl<M: Memory> MVM<M> {
 			0xe4 => jalnzc!(),
 			0xe5 => jalrnzc!(),
 
+			0xef => {} // nop
+
 			0xf0 => load!(u8),
 			0xf1 => load!(u16),
 			0xf2 => load!(u32),
